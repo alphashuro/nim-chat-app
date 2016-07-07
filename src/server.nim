@@ -3,6 +3,14 @@ import asyncdispatch, asyncnet, parseopt, strutils
 var 
   port = 7687
 
+for kind, key, val in getOpt(): # get commandline args
+  case kind:
+  of cmdLongOption, cmdShortOption: # the only ones we care about have values
+    case key
+    of "port": port = parseInt val.string # val is actually a TaintedString
+    else: echo("Got unknown flag --", key, " with value: ", val)
+  else: discard
+
 type
   Client = ref object
     socket: AsyncSocket # socket we will use to send messages to client
