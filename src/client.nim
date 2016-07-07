@@ -1,32 +1,41 @@
-import os, threadpool, asyncdispatch, asyncnet, protocol
+import os, threadpool, asyncdispatch, asyncnet, protocol, parseopt, strutils
 
-proc connect(socket: AsyncSocket, serverAddr: string) {.async.} =
-  echo "Connecting to ", serverAddr
-  await socket.connect(serverAddr, 7687.Port)
+var 
+  serverAddress = "localhost" # default server
+  username = "anonymous"
+  port = 7687 # default port
+
+for kind, key, val in getOpt(): # get commandline args
+  case kind:
+  of cmdLongOption, cmdShortOption: # the only ones we care about have values
+    case key
+    of "port": port = parseInt val.string # val is actually a TaintedString
+    of "server": serverAddress = val.string
+    of "user": username = val.string
+    else: echo("Got unknown flag --", key, " with value: ", val)
+  else: discard
+
+echo "Chat application started"
+
+let socket = newAsyncSocket() # new socket we'll use to communicate with the server
+
+proc connect(socket: AsyncSocket, serverAddress: string) {.async.} = # async function to connect to server
+  echo "Connecting to ", serverAddress
+  await socket.connect(serverAddress, port.Port) # wait till we get a connection to the server
   echo "Connected!"
 
   while true:
-    let line = await socket.recvLine()
-    let message = parseMessage line
-    echo message.username, " said: '", message.message, "'"
+    let line = await socket.recvLine() # everytime we get a message
+    let message = parseMessage line # create a message object
+    echo message.username, " said: '", message.message, "'" # echo the message to the current client
 
-echo "Chat application started"
-if paramCount() == 0: quit "Please specify the server address, e.g. ./client localhost"
+asyncCheck socket.connect(serverAddress) # run the connect function asyncronously, don't care what's returned
 
-let serverAddr = paramStr(1)
-var username: string
-when paramCount() > 1:
-  username = paramStr(2)
-echo "Connecting to ", serverAddr
-
-let socket = newAsyncSocket()
-asyncCheck connect(socket, serverAddr)
-
-var messageFlowVar = spawn stdin.readLine()
+var messageFlowVar = spawn stdin.readLine() # read a line from the user, returns an async FlowVar
 while true:
-  if messageFlowVar.isReady():
-    let message = createMessage(username, ^messageFlowVar)
-    asyncCheck socket.send(message)
-    messageFlowVar = spawn stdin.readLine()
+  if messageFlowVar.isReady(): # will return true when the user enters a message
+    let message = createMessage(username, ^messageFlowVar) # creates a message object to be sent to other clients
+    asyncCheck socket.send(message) # send the message asyncronously, don't care what's returned
+    messageFlowVar = spawn stdin.readLine() # get a new message from the current user
 
-  asyncdispatch.poll()
+  asyncdispatch.poll() # poll the dispatcher for events so that we'll always know when the user has typed a message
