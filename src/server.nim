@@ -42,6 +42,7 @@ proc processMessages(server: Server, client: Client) {.async.} =
 
 # listen for connections from clients
 proc listen(server: Server, port = port) {.async.} =
+  echo "listening on ", port
   server.socket.bindAddr port.Port
   server.socket.listen()
 
