@@ -1,3 +1,7 @@
+# this is the server module of the client-server chat app
+# build the executable and run it with optional argument for port
+# eg ./bin/server --port=7687
+
 import asyncdispatch, asyncnet, parseopt, strutils
 
 var 
