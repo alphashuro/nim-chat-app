@@ -1,5 +1,8 @@
 NIMFLAGS="c"
 
+# build both
+all: client server
+
 # build the client executable
 client:
 	nim $(NIMFLAGS) src/client.nim
@@ -7,9 +10,6 @@ client:
 # build the server executable
 server:
 	nim $(NIMFLAGS) src/server.nim
-
-# build both
-all: client server
 
 # clean the output dirs
 clean:
